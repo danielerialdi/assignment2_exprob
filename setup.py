@@ -1,4 +1,6 @@
 from setuptools import setup
+from glob       import glob
+import os
 
 package_name = 'assignment2_exprob'
 
@@ -10,6 +12,12 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*launch.py')),
+        (os.path.join('share', package_name, 'urdf'), glob('urdf/*.xacro')),
+        (os.path.join('share', package_name, 'urdf'), glob('urdf/*.gazebo')),
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*.world')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.rviz')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
