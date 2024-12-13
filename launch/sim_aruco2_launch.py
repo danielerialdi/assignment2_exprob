@@ -1,61 +1,71 @@
-import launch
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo, PushRosNamespace
-from launch.substitutions import LaunchConfiguration, FindPackageShare
-from launch_ros.actions import Node
+"""
+Spawn Robot Description
+"""
 import os
 
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, LaunchConfiguration
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+
+
 def generate_launch_description():
+    test_robot_description_share = FindPackageShare(
+        package='assignment2_exprob').find('assignment2_exprob')
+    default_model_path = os.path.join(
+        test_robot_description_share, 'urdf/robot4.xacro')
+    # default_world_path = os.path.join(test_robot_description_share, 'worlds/aruco_test.world')
+    default_world_path = os.path.join(
+        test_robot_description_share, 'worlds/assignment2.world')
+    rviz_config_path = os.path.join(
+        test_robot_description_share, 'config/rviz.rviz')
+    '''
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[{'robot_description': Command(
+            ['xacro ', LaunchConfiguration('model')])}]
+    )
+
+    joint_state_publisher_node = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        name='joint_state_publisher'
+    )
+    '''
+
+    
+    
+    # GAZEBO_MODEL_PATH has to be correctly set for Gazebo to be able to find the model
+    
+    spawn_entity = Node(package='gazebo_ros', executable='spawn_entity.py',
+                        arguments=['-entity', 'my_test_robot',
+                                   '-topic', '/robot_description', '-Y', '3.14'],
+                        output='screen')
+
+    '''
+    camera01_controller = Node(
+        package="controller_manager",
+        executable="spawner.py",
+        output="screen",
+        arguments=["joint_camera_controller"],
+    )
+    '''
     return LaunchDescription([
-        # Declare launch arguments
-        DeclareLaunchArgument('paused', default_value='true', description='Whether the simulation should be paused'),
-        DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation time'),
-        DeclareLaunchArgument('extra_gazebo_args', default_value='', description='Extra arguments for Gazebo'),
-        DeclareLaunchArgument('gui', default_value='true', description='Whether to start GUI'),
-        DeclareLaunchArgument('recording', default_value='false', description='Whether to record the simulation'),
-        DeclareLaunchArgument('world', default_value='assignment2', description='World to load in Gazebo'),
-        DeclareLaunchArgument('headless', default_value='false', description='Whether to run Gazebo headlessly'),
-        DeclareLaunchArgument('debug', default_value='false', description='Whether to run in debug mode'),
-        DeclareLaunchArgument('physics', default_value='ode', description='Physics engine to use'),
-        DeclareLaunchArgument('verbose', default_value='false', description='Enable verbose logging'),
-        DeclareLaunchArgument('world_name', default_value='$(find assignment2_exprob)/worlds/$(arg world).world', description='Path to the world file'),
-        DeclareLaunchArgument('respawn_gazebo', default_value='false', description='Whether to respawn Gazebo server'),
-        DeclareLaunchArgument('use_clock_frequency', default_value='false', description='Whether to use clock frequency'),
-        DeclareLaunchArgument('pub_clock_frequency', default_value='100', description='Clock publishing frequency'),
-
-        # Set the '/use_sim_time' parameter
-        Node(
-            package='rosparam',
-            executable='param',
-            name='use_sim_time_param',
-            parameters=[{'/use_sim_time': LaunchConfiguration('use_sim_time')}],
-            output='screen'
-        ),
-
-        # Start gazebo server (gzserver)
-        Node(
-            package='gazebo_ros',
-            executable='gzserver',
-            name='gazebo',
-            output='screen',
-            respawn=LaunchConfiguration('respawn_gazebo'),
-            arguments=[
-                '-e', LaunchConfiguration('physics'),
-                LaunchConfiguration('extra_gazebo_args'),
-                '-r' if LaunchConfiguration('recording') == 'true' else '',
-                '--verbose' if LaunchConfiguration('verbose') == 'true' else '',
-                '-u' if LaunchConfiguration('paused') == 'true' else '',
-                LaunchConfiguration('world_name')
-            ]
-        ),
-
-        # Start gazebo client (gzclient)
-        Node(
-            package='gazebo_ros',
-            executable='gzclient',
-            name='gazebo_gui',
-            output='screen',
-            respawn=False,
-            condition=launch.conditions.IfCondition(LaunchConfiguration('gui'))
-        )
+        DeclareLaunchArgument(name='model', default_value=default_model_path,
+                              description='Absolute path to robot urdf file'),
+        #robot_state_publisher_node,
+        #joint_state_publisher_node,
+        ExecuteProcess(
+            cmd=['gazebo', '--verbose', default_world_path,
+                 '-s', 'libgazebo_ros_factory.so'],
+            output='screen'),
+        ExecuteProcess(
+            cmd=['rviz2', '-d', rviz_config_path],
+            output='screen'),
+        spawn_entity,
+        #camera01_controller
     ])
